@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>APEX FOCUS F1 戰術讀書系統</title>
+  
+  <!-- 1. 載入 Tailwind CSS 樣式 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- 2. 載入 React & ReactDOM 核心 -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  
+  <!-- 3. 載入 Babel 解析器 (讓瀏覽器能解讀 JSX) -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- 4. 載入 Lucide 圖示庫 -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-[#0A0D14] text-slate-100 font-sans selection:bg-red-600 selection:text-white">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback } = React;
+
+    function App() {
+      const [activeTab, setActiveTab] = useState('timer');
+
+      // 本地儲存 LocalStorage
+      const [lapsCompleted, setLapsCompleted] = useState(() => {
+        const saved = localStorage.getItem('apex_zh_laps');
+        return saved ? parseInt(saved, 10) : 0;
+      });
+
+      const [tasks, setTasks] = useState(() => {
+        const saved = localStorage.getItem('apex_zh_tasks');
+        return saved ? JSON.parse(saved) : [
+          { id: 1, title: '微積分 第四章 微分應用與積分入門', subject: '數學', lapsReq: 4, lapsDone: 0, completed: false, date: '2026-10-29' },
+          { id: 2, title: '物理 力學與牛頓運動定律題目演練', subject: '物理', lapsReq: 3, lapsDone: 0, completed: false, date: '2026-10-29' }
+        ];
+      });
+
+      const [exams, setExams] = useState(() => {
+        const saved = localStorage.getItem('apex_zh_exams');
+        return saved ? JSON.parse(saved) : [];
+      });
+
+      const [gpCountdowns, setGpCountdowns] = useState(() => {
+        const saved = localStorage.getItem('apex_zh_gp_countdowns');
+        return saved ? JSON.parse(saved) : [
+          { id: 'gp_1', title: '學測大獎賽 (Main GP)', date: '2027-01-20T08:30', isPrimary: true }
+        ];
+      });
+
+      const [upgradesList, setUpgradesList] = useState(() => {
+        const saved = localStorage.getItem('apex_zh_pu_list');
+        return saved ? JSON.parse(saved) : [
+          {
+            id: 'mguk',
+            title: 'MGU-K 覆盤動能回收',
+            category: '主動回想與間隔重複',
+            hp: 100,
+            desc: '在重新讀書前，先透過閃卡或主動提取舊記憶（廢熱/煞車動能），將快忘記的知識重新轉化為強大輸出。',
+            tag: '記憶強化'
+          },
+          {
+            id: 'drs',
+            title: 'DRS 尾翼減阻系統',
+            category: '手機禁食與數位極簡',
+            hp: 85,
+            desc: '開啟 DRS 壓低手機通知與外界干擾阻力，讓專注力在直線賽道上瞬間爆發出極速。',
+            tag: '抗分心'
+          },
+          {
+            id: 'aduo',
+            title: 'ADUO 費曼雙渦輪增壓',
+            category: '費曼學習法',
+            hp: 120,
+            desc: '用高壓壓縮大腦資訊，將複雜難題用最簡單的語言講給不懂的人聽，大幅提升進氣效率。',
+            tag: '深度理解'
+          }
+        ];
+      });
+
+      const [activeUpgrades, setActiveUpgrades] = useState(() => {
+        const saved = localStorage.getItem('apex_zh_pu_upgrades');
+        return saved ? JSON.parse(saved) : ['mguk', 'drs'];
+      });
+
+      const [soundEnabled, setSoundEnabled] = useState(true);
+
+      useEffect(() => { localStorage.setItem('apex_zh_laps', lapsCompleted.toString()); }, [lapsCompleted]);
+      useEffect(() => { localStorage.setItem('apex_zh_tasks', JSON.stringify(tasks)); }, [tasks]);
+      useEffect(() => { localStorage.setItem('apex_zh_exams', JSON.stringify(exams)); }, [exams]);
+      useEffect(() => { localStorage.setItem('apex_zh_pu_list', JSON.stringify(upgradesList)); }, [upgradesList]);
+      useEffect(() => { localStorage.setItem('apex_zh_pu_upgrades', JSON.stringify(activeUpgrades)); }, [activeUpgrades]);
+      useEffect(() => { localStorage.setItem('apex_zh_gp_countdowns', JSON.stringify(gpCountdowns)); }, [gpCountdowns]);
+
+      const calculateTotalHp = () => {
+        const equippedHp = upgradesList
+          .filter(item => activeUpgrades.includes(item.id))
+          .reduce((sum, item) => sum + (parseInt(item.hp, 10) || 0), 0);
+        return 700 + equippedHp;
+      };
+
+      const playBeep = useCallback((freq = 880, type = 'sine', duration = 0.15) => {
+        if (!soundEnabled) return;
+        try {
+          const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+          gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start();
+          osc.stop(audioCtx.currentTime + duration);
+        } catch (e) {
+          console.error(e);
+        }
+      }, [soundEnabled]);
+
+      return (
+        <div className="min-h-screen bg-[#0A0D14] text-slate-100 font-sans flex flex-col">
+          {/* 頂部賽車遙測數據列 */}
+          <header className="relative z-10 border-b border-slate-800/80 bg-[#0F131C]/90 backdrop-blur-md px-4 py-3">
+            <div className="max-w-7xl mx-auto flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="bg-red-600 text-white font-black italic tracking-wider text-xl px-2.5 py-1 rounded transform -skew-x-12 shadow-lg shadow-red-600/30">
+                  APEX
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold tracking-wide uppercase flex items-center gap-2 font-mono">
+                    APEX FOCUS <span className="text-xs bg-red-950/80 text-red-400 border border-red-800/50 px-2 py-0.5 rounded-full font-sans">F1 戰術讀書系統 V3.5</span>
+                  </h1>
+                  <p className="text-xs text-slate-400">賽車級時間管理 & 學習動力單元架構</p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-4 text-xs font-mono">
+                <div className="bg-slate-900/80 border border-slate-800 px-3 py-1.5 rounded-lg text-amber-400 font-bold">
+                  {lapsCompleted} Laps (圈)
+                </div>
+                <div className="bg-slate-900/80 border border-slate-800 px-3 py-1.5 rounded-lg text-emerald-400 font-bold">
+                  {calculateTotalHp()} HP
+                </div>
+              </div>
+            </div>
+          </header>
+
+          {/* 導覽分頁 */}
+          <nav className="relative z-10 bg-[#0B0E17] border-b border-slate-800/60 sticky top-0 backdrop-blur-md">
+            <div className="max-w-7xl mx-auto px-4 flex space-x-2 overflow-x-auto py-2">
+              <button 
+                onClick={() => { setActiveTab('timer'); playBeep(1200, 'triangle', 0.05); }}
+                className={`py-2 px-4 font-mono text-xs font-bold rounded-lg transition ${activeTab === 'timer' ? 'bg-red-600 text-white' : 'bg-slate-900 text-slate-400'}`}
+              >
+                1. PIT Stop 計時器
+              </button>
+              <button 
+                onClick={() => { setActiveTab('upgrades'); playBeep(1200, 'triangle', 0.05); }}
+                className={`py-2 px-4 font-mono text-xs font-bold rounded-lg transition ${activeTab === 'upgrades' ? 'bg-red-600 text-white' : 'bg-slate-900 text-slate-400'}`}
+              >
+                2. PU 升級庫 ({activeUpgrades.length})
+              </button>
+              <button 
+                onClick={() => { setActiveTab('calendar'); playBeep(1200, 'triangle', 0.05); }}
+                className={`py-2 px-4 font-mono text-xs font-bold rounded-lg transition ${activeTab === 'calendar' ? 'bg-red-600 text-white' : 'bg-slate-900 text-slate-400'}`}
+              >
+                3. 大獎賽計畫
+              </button>
+            </div>
+          </nav>
+
+          {/* 主要內容區 */}
+          <main className="relative z-10 flex-grow max-w-7xl w-full mx-auto p-4 md:p-6">
+            {activeTab === 'timer' && (
+              <div className="bg-[#0F131D] border border-slate-800 rounded-2xl p-8 text-center space-y-4">
+                <div className="text-emerald-400 font-mono text-sm font-bold">🟢 SYSTEM READY / 戰術系統已上線</div>
+                <h2 className="text-3xl font-black font-mono text-white">25:00</h2>
+                <p className="text-xs text-slate-400 font-mono">點擊下方按鈕開始進行第一圈（Lap 1）專注衝刺！</p>
+                <button 
+                  onClick={() => { setLapsCompleted(prev => prev + 1); playBeep(1000, 'sine', 0.2); }}
+                  className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-mono font-bold text-sm rounded-xl transition shadow-lg shadow-red-600/30"
+                >
+                  🏁 完成一圈 (加 1 Lap)
+                </button>
+              </div>
+            )}
+
+            {activeTab === 'upgrades' && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-bold font-mono text-white">已裝備之動力單元 (PU)</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {upgradesList.map(u => (
+                    <div key={u.id} className="bg-[#0F131D] border border-slate-800 p-4 rounded-xl">
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold font-mono text-white">{u.title}</span>
+                        <span className="text-xs text-emerald-400 font-mono">+{u.hp} HP</span>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-2 font-mono">{u.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'calendar' && (
+              <div className="bg-[#0F131D] border border-slate-800 rounded-2xl p-6 space-y-4">
+                <h3 className="text-lg font-bold font-mono text-white">大獎賽倒數</h3>
+                {gpCountdowns.map(gp => (
+                  <div key={gp.id} className="bg-slate-900 border border-slate-800 p-4 rounded-xl flex justify-between items-center">
+                    <div>
+                      <div className="font-bold font-mono text-white">{gp.title}</div>
+                      <div className="text-xs text-slate-500 font-mono">{gp.date}</div>
+                    </div>
+                    <div className="text-amber-400 font-mono font-bold text-sm">TARGET SET</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </main>
+        </div>
+      );
+    }
+
+    // 渲染 React 元件到頁面上
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
